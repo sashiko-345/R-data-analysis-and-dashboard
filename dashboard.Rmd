@@ -1,0 +1,631 @@
+---
+title: "跨国公司入离职分析报告"
+output: 
+  flexdashboard::flex_dashboard:
+    vertical_layout: scroll
+    theme: default
+---
+
+```{r}
+library(recharts)
+library(ggplot2)
+library(flexdashboard)
+library(readxl)
+library(tidyverse)
+library(plotly)
+library(gganimate)
+library(gapminder)
+library(bbplot)
+library(DT)
+library(ggmap)
+require(knitr)
+library(bbplot)
+library(dplyr)
+library(utils)
+library(wordcloud2)
+rm(list = ls())
+setwd("~/Rlearning")
+Americas<-read_excel("HR Dashboard_v1 - Americas.xlsx",na='-')
+APAC<-read_excel("HR Dashboard_v1 - APAC.xlsx",na='-')
+Europe<-read_excel("HR Dashboard_v1 - Europe.xlsx",na='-')
+Americas<-mutate(Americas,area="Americas")
+APAC<-mutate(APAC,area="APAC")
+Europe<-mutate(Europe,area="Europe")
+All<-rbind(Americas,APAC,Europe)
+All<-mutate(All,workingtime=`Date of Exit`-`Date of Hire`)
+```
+
+# 离入职总情况 {data-orientation=rows}
+
+## Row {data-height=230}
+### 小组分工 {data-width=400}
+- 谢雨馨 2017212028：组长。新问题新趋势挖掘，dashboard第4页，代码整合
+- 郭玲 2017212021：新进人员情况分析和离职人员情况分析，dashboard第2、3页
+- 余沁卓 2017212026 ：区域分析、改进建议和地图，dashboard第1页
+
+### 根据人员新进和离职流动情况提出的改进之处{data-width=600}
+- 自愿离职的人数占离职人数的85%，按通常情况我们假定公司希望自愿离职的人数较少，单从这一方面来看，如何减少这部分离职人员有一下几种方式：
+  1、工作签证为work permit的员工离职意愿最低，可适当增加这部分员工。
+  2、合同工的离职意愿低于正式工，应保持适当的合同工和正式工的比例
+  3、建立上升机制，挽留住因为更优厚的薪资和工作机会而离职的员工
+  4、年初有一波离职潮，如果能在年初及之前做好人力资源管理，也许可以预防和减少离职
+- 降低自愿离职员工数的同时也应该考虑不同工作签证和合同种类带来的员工资质和稳定性的差别。
+- 罗马尼亚离职、入职人数都最高，且入职比离职多出20人，说明罗马尼亚地区处于业务扩张阶段，人员流动性较高，应该在扩张的同时提高老员工的满意度，减少人才流失。
+- 阿根廷、巴西、加拿大人员流出为0，不利于更换新鲜血液
+
+## Row {data-height=300}
+
+### Entry map by Country {data-width=600}
+
+```{r}
+map_entry<-All%>%
+  filter(`Type of movement`=="Entry")%>%
+  group_by(Country)%>%
+  summarise(maptotal_entry=sum(length(Country)))
+map_entry<-data.frame(
+  Country = c("Argentina","Australia","Brazil","Canada","India","Romania","United States of America"),
+  maptotal_entry = as.numeric(map_entry$maptotal_entry))
+map_entry%>%echartr(x= `Country` ,y = maptotal_entry , type="map_world") %>%     
+  setDataRange(splitNumber=0, color=getColFromPal('heat')) %>%
+  setTitle("World number of Entry")
+
+```
+
+### 各国家入职人数 {data-width=600}
+```{r p2}
+pic1<-All %>% 
+  filter(`Type of movement`=="Entry")%>%
+ group_by(`Country`) %>% 
+  summarise(totalentry = length(`Type of movement`=="Entry")) %>%
+  ggplot(., mapping=aes(x = `Country`, y = totalentry)) + 
+  geom_bar(stat='identity') + xlab('国家') + ylab('入职人数')+ 
+  ggtitle("各国家入职人数")
+ggplotly(pic1)
+```
+
+## Row {data-height=300}
+### Hires map by Country {data-width=600}
+
+```{r exit}
+map_exit<-All%>%
+  filter(`Type of movement`=="Exit")%>%
+  group_by(Country)%>%
+  summarise(maptotal_exit=sum(length(Country)))
+map_exit<-data.frame(
+  Country = c("Australia","India","Romania","United States of America"),
+  maptotal_exit = as.numeric(map_exit$maptotal_exit))
+map_exit%>%echartr(x= `Country` ,y = maptotal_exit , type="map_world") %>%     
+  setDataRange(splitNumber=0, color=getColFromPal('heat')) %>%
+  setTitle("World number of Exit")
+
+
+```
+
+### 各国家离职人数 {data-width=600}
+```{r}
+pic2<-All %>% 
+  filter(`Type of movement`=="Exit")%>%
+ group_by(`Country`) %>% 
+  summarise(totalentry = length(`Type of movement`=="Exit")) %>%
+  ggplot(., mapping=aes(x = `Country`, y = totalentry)) + 
+  geom_bar(stat='identity') + xlab('国家') + ylab('离职人数')+ 
+  ggtitle("各国家离职人数")
+ggplotly(pic2)
+```
+
+## Row {data-height=200}
+### 离入职情况小结
+
+- 印度和罗马尼亚离职人数相当且最高，为15人
+-美国离职人数紧随其后，为12人，美洲地区没有其他国家出现离职情况
+- 澳大利亚离职人数为5人
+- 离职人员按国家来看分布较为集中，除上述四个国家以外没有其他国家有离职人员。
+- 欧洲区罗马尼亚入职人数最多，达35人
+- 美国入职人数达到16人，比印度的20人略少
+- 入职人数最少的是巴西，只有一人
+- 各国家招聘员工数差距较大，但明显与国家发达程度或国家大小无关。
+
+## Row {data-height=300}
+### 入职离职人数比{data-width=700}
+
+```{r}
+Country_Entry <-All%>%
+  filter(`Type of movement`=="Entry")%>%
+  group_by(Country)%>%
+  summarise(total_entry=sum(length(Country)))
+Country_Exit <-All%>%
+  filter(`Type of movement`=="Exit")%>%
+  group_by(Country)%>%
+  summarise(total_exit=sum(length(Country)))
+Country_Exit1<- data.frame(totalcountryexit = c(0,5,0,0,15,15,12))
+Country <- cbind(Country_Entry,Country_Exit1)
+Country<-mutate(Country,proportion = totalcountryexit/total_entry)
+averange<-mean(Country$proportion)
+p_propor<-Country%>%
+  ggplot(aes(x=Country,y=proportion))+
+  geom_point()+
+  geom_hline(aes(yintercept=averange))
+ggplotly()
+```
+  
+### 流动情况小结
+
+- 印度和美国的离职与入职人数比明显高于平均水平
+- 阿根廷、巴西、加拿大离职人数为0，只有入职人员低于平均水平
+- 澳大利亚、罗马尼亚的离入职人数比略高于平均水平，基本正常
+
+
+
+# 入职情况 {data-orientation=rows}
+
+## Row {data-height=120}
+
+### 美洲区入职人数
+
+```{r}
+valueBox(28,icon = 'fa-user-plus',color = "lightgreen")
+```
+
+### 亚太区入职人数
+
+```{r}
+valueBox(30,icon = 'fa-user-plus',color = "lightblue")
+```
+
+### 欧洲区入职人数
+
+```{r}
+valueBox(35,icon = 'fa-user-plus',color = '#afb4db')
+```
+
+## Row {data-height=450}
+
+### New hires by Org {data-width=700}
+
+```{r}
+All%>%
+  filter(`Type of movement`=="Entry")%>%
+  group_by(Org,`Manager Name`)%>%
+  summarise(count=length(`Manager Name`))%>%
+  ggplot(aes(x=`Manager Name`,y=count))+
+  geom_bar(stat = "identity",fill="#1380A1",width = 0.6,position = position_dodge(0.7))+
+  facet_wrap(~Org,scales = 'free')+
+  bbc_style()+
+  labs(title="各隶属单位入职情况")+
+  theme(plot.title = ggplot2::element_text(size = 17,face = "bold",colour = "#222222"),
+        plot.caption = ggplot2::element_text(size = 14,face = "bold",colour = "#222222"),
+        axis.text = ggplot2::element_text(size = 12),
+        axis.text.x = element_text(angle = 15,hjust = 0.8, vjust = 0.8),
+        axis.title = element_text(size = 12))+
+  geom_text(stat="identity",aes(label=count), color="white", size=3.5,vjust=1.5)
+
+```
+
+### Org小结 {data-width=300}
+
+- Corparate只有一位manager，新进员工数为8人。
+- Delivery有四位manager，招聘人数普遍较多，两位manager新进员工数为17人。
+- DeliveryOps有四位manager，招聘人数普遍较少，招聘员工最多的一位manager只招聘了5个新员工。
+- Support只有一位manager，新进员工数为15人。
+
+- 各单位招聘员工数差距较大，Delivery招聘员工最多，新进员工数为56人，而Corporate招聘员工最少，只有8人。
+
+## Row {data-height=400}
+
+### Employment type {data-width=330}
+
+```{r }
+#岗位性质~入职情况
+p5<-All%>%
+  filter(`Type of movement`=="Entry")%>%
+  group_by(area,`Employment type`)%>%
+  summarise(count=length(`Employment type`))%>%
+  ggplot(aes(x=`Employment type`,y=count,fill=area))+
+  geom_bar(stat = "identity",width = 0.6,position = "dodge")+
+  labs(title="岗位性质与入职情况")+
+  bbc_style()+
+  scale_fill_manual(values = c("#7E90FA","#7CC8E6","#1380A1"))+
+  guides(fill=guide_legend(override.aes = list(size=8)))+
+  theme(plot.title = ggplot2::element_text(size = 14,face = "bold",colour = "#222222"),
+        plot.caption = ggplot2::element_text(size = 14,face = "bold",colour = "#222222"),
+        axis.text = ggplot2::element_text(size = 12),
+        axis.title = ggplot2::element_text(size = 13),
+        legend.position = "top",
+        legend.text = element_text(size = 6))
+ggplotly(p5)
+```
+
+### 小结 {data-width=340}
+
+- 岗位性质与入职情况:
+- 合同工共新招聘17人，其中美洲区2人，亚太区15人，欧洲区没有招聘合同工。全职员工共招聘76人，是合同工的4倍多，其中欧洲区招聘最多，新进员工数为35人，亚洲区招聘最少，新进员工数为15人。
+- 欧洲区只招聘了全职员工,美洲区招聘的员工九成为全职员工，亚洲区招聘的合同工与全职员工的人数相同。
+
+- 工作许可与入职情况:
+- 工作许可为公民的员工招聘最多，共招聘了73名，其中欧洲区最多，招聘了35名。工作许可为永久居民的员工招聘最少，只有美洲区招聘了3名。工作许可为工作签证的员工共招聘17人，其中美洲区7人，亚太区10人，欧洲区没有招聘。
+- 欧洲区只招聘citizen，亚太区只招聘了citizen和work permit，美洲区三种工作许可的员工都有招聘，但是permanent resident也招聘的很少。
+
+
+### Work Authorisation {data-width=330}
+
+```{r fig.width=25,fig.height=25}
+#工作许可~入职情况
+p6<-All%>%
+  filter(`Type of movement`=="Entry")%>%
+  group_by(area,`Work Authorisation`)%>%
+  summarise(count=length(`Work Authorisation`))%>%
+  ggplot(aes(x=`Work Authorisation`,y=count,fill=area))+
+  geom_bar(stat = "identity",width = 0.7,position = "dodge")+
+  labs(title="工作许可与入职情况")+
+  bbc_style()+
+  scale_fill_manual(values = c("#7E90FA","#7CC8E6","#1380A1"))+
+  guides(fill=guide_legend(override.aes = list(size=8)))+
+  theme(plot.title = ggplot2::element_text(size = 14,face = "bold",colour = "#222222"),
+        plot.caption = ggplot2::element_text(size = 14,face = "bold",colour = "#222222"),
+        axis.text = ggplot2::element_text(size = 12),
+        axis.title = ggplot2::element_text(size = 13),
+        axis.text.x = element_text(angle = 20,hjust = 0.8, vjust = 0.8),
+        legend.position = "top",
+        legend.text = element_text(size = 6))
+ggplotly(p6)
+```
+
+# 离职情况 {data-orientation=rows}
+
+## Row {data-height=120}
+
+### 美洲区离职人数
+
+```{r}
+valueBox(12,icon = 'fa-user-times',color = "lightgreen")
+```
+
+### 亚太区离职人数
+
+```{r}
+valueBox(20,icon = 'fa-user-times',color = "lightblue")
+```
+
+### 欧洲区离职人数
+
+```{r}
+valueBox(15,icon = 'fa-user-times',color = "#afb4db")
+```
+
+## Row {data-height=300}
+
+### Studio 
+
+```{r}
+q8<-All%>%
+  group_by(Studio,area,`Type of movement`)%>%
+  summarise(count=length(Studio))%>%
+  ggplot(aes(x=Studio,y=count,fill=`Type of movement`))+
+  geom_bar(stat = "identity",position = "dodge",width = 0.8)+
+  labs(title="各工作室入职、离职情况")+
+  facet_wrap(~area,scales = 'free')+
+  bbc_style()+
+  scale_fill_manual(values = c("#7CC8E6","#1380A1"))+
+  guides(fill=guide_legend(override.aes = list(size=8)))+
+  theme(plot.title = ggplot2::element_text(size = 14,face = "bold",colour = "#222222"),
+        plot.caption = ggplot2::element_text(size = 14,face = "bold",colour = "#222222"),
+        axis.text = ggplot2::element_text(size = 12),
+        axis.text.x = element_text(angle = 90,hjust = 0.8, vjust = 0.8),
+        legend.position = "top",
+        legend.text = element_text(size = 6))
+
+ggplotly(q8)
+```
+
+## Row {data-height=100}
+
+### Studio 小结 
+
+- 美洲区工作室较多，绝大部分每个工作室只有一名员工入职或离职，人员流动性普遍较小。
+- 亚太区每个工作室都有新员工入职，离职员工数小于等于入职员工数，其中，Mysore工作室人员流动性最大，且离职人数与入职人数持平。
+- 欧洲区的6个工作室都有新员工入职，但仅有2个工作室有员工离职，Cluj-Napoca工作室离职人数与入职人数基本相等，且人数较多，Baia Mare工作室离职人数多于入职人数。
+
+## Row {data-height=450}
+
+### Org {data-width=700}
+
+```{r}
+All%>%
+  filter(`Type of movement`=="Exit")%>%
+  group_by(Org,`Manager Name`)%>%
+  summarise(count=length(`Manager Name`))%>%
+  ggplot(aes(x=`Manager Name`,y=count))+
+  geom_bar(stat = "identity",fill="#1380A1",width = 0.6)+
+  facet_wrap(~Org,scales = 'free')+
+  labs(title="各隶属单位离职情况")+
+  bbc_style()+
+  theme(plot.title = ggplot2::element_text(size = 17,face = "bold",colour = "#222222"),
+        plot.caption = ggplot2::element_text(size = 14,face = "bold",colour = "#222222"),
+        axis.text = ggplot2::element_text(size = 12),
+        axis.text.x = element_text(angle = 15,hjust = 0.8, vjust = 0.8),
+        axis.title = element_text(size = 12))+
+  geom_text(stat="identity",aes(label=count), color="white", size=3.5,vjust=1.5)
+  
+```
+
+### Org小结 {data-width=300}
+
+- Corparate只有一位manager，离职员工数为3人。
+- Delivery有四位manager，离职人数普遍较多（8-9人），只有manager Kelly Paul离职员工数为1人。
+- DeliveryOps有四位manager，离职人数普遍较少（1-3人）。
+- Support只有一位manager，离职员工数为12人。
+
+- 各单位离职情况与入职情况的趋势基本相等，入职人数多的单位离职人数也多
+- 各单位离职人数普遍少于入职人数。单位Delivery有两位manager情况特殊，manager Paul，离职人数（1人）远小于入职人数（14人），manager Knox，入职人数与离职人数基本持平。
+
+## Row {data-height=350}
+
+### Employment type {data-width=330}
+
+```{r }
+q5<-All%>%
+  filter(`Type of movement`=="Exit")%>%
+  group_by(area,`Employment type`)%>%
+  summarise(count=length(`Employment type`))%>%
+  ggplot(aes(x=`Employment type`,y=count,fill=area))+
+  geom_bar(stat = "identity",width = 0.6,position = "dodge")+
+  labs(title="岗位性质与离职情况")+
+  bbc_style()+
+  scale_fill_manual(values = c("#7E90FA","#7CC8E6","#1380A1"))+
+  guides(fill=guide_legend(override.aes = list(size=8)))+
+  theme(plot.title = ggplot2::element_text(size = 14,face = "bold",colour = "#222222"),
+        plot.caption = ggplot2::element_text(size = 14,face = "bold",colour = "#222222"),
+        axis.text = ggplot2::element_text(size = 12),
+        axis.title = ggplot2::element_text(size = 13),
+        legend.position = "top",
+        legend.text = element_text(size = 6))
+ggplotly(q5)
+```
+
+### 小结 {data-width=340}
+
+- 岗位性质与离职情况:
+- 三个区域都没有合同工离职。全职员工共离职47人，少于入职人数，其中亚太区离职人数最多。
+- 美洲区和欧洲区的离职人数均小于入职人数，亚太区离职人数多余入职人数。
+
+- 工作许可与离职情况:
+- 工作许可为公民的员工离职最多，共38名，其中美洲区最少，离职了8名。工作许可为永久居民的员工离职最少，只有美洲区离职了4名。没有工作许可为work permit的员工离职。
+- 欧洲区和亚太区只有citizen的员工离职；美洲区只有citizen和permanent resident的员工离职。
+
+
+### Work Authorisation {data-width=330}
+
+```{r }
+#工作许可~入职情况
+q6<-All%>%
+  filter(`Type of movement`=="Exit")%>%
+  filter(`Work Authorisation`!="NA")%>%
+  group_by(area,`Work Authorisation`)%>%
+  summarise(count=length(`Work Authorisation`))%>%
+  ggplot(aes(x=`Work Authorisation`,y=count,fill=area))+
+  geom_bar(stat = "identity",width = 0.7,position = "dodge")+
+  labs(title="工作许可与离职情况")+
+  bbc_style()+
+  scale_fill_manual(values = c("#7E90FA","#7CC8E6","#1380A1"))+
+  guides(fill=guide_legend(override.aes = list(size=8)))+
+  theme(plot.title = ggplot2::element_text(size = 14,face = "bold",colour = "#222222"),
+        plot.caption = ggplot2::element_text(size = 14,face = "bold",colour = "#222222"),
+        axis.text = ggplot2::element_text(size = 12),
+        axis.title = ggplot2::element_text(size = 13),
+        legend.position = "top",
+        legend.text = element_text(size = 6))
+ggplotly(q6)
+``` 
+
+## Row{data-height=370}
+
+### Reason for leaving {data-width=300}
+
+```{r}
+colors <- c('102b6a','#444693', '2b4490', '2a5caa',  '4e72b8','afb4db')
+
+All%>%
+  filter(`Type of movement`=="Exit")%>%
+  group_by(`Reason for Leaving`)%>%
+  summarise(count=length(`Reason for Leaving`))%>%
+  plot_ly( labels = ~`Reason for Leaving`, values = ~count, type = 'pie',
+        textposition = 'inside',
+        textinfo = 'label+percent',
+        insidetextfont = list(color = '#FFFFFF'),
+        hoverinfo = 'text',
+        marker = list(colors = colors,
+                      line = list(color = '#FFFFFF', width = 1)),
+                      
+        showlegend = FALSE)%>%
+  layout(title = '离职原因与离职人数',
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+```
+
+### Attrition Type {data-width=300}
+
+```{r}
+colors <- c('102b6a','#444693', '#2b4490', '#2a5caa',  '#4e72b8','#afb4db')
+
+All%>%
+  filter(`Type of movement`=="Exit")%>%
+  group_by(`Attrition Type`)%>%
+  summarise(count=length(`Attrition Type`))%>%
+  plot_ly( labels = ~`Attrition Type`, values = ~count, type = 'pie',
+        textposition = 'inside',
+        textinfo = 'label+percent',
+        insidetextfont = list(color = '#FFFFFF'),
+        hoverinfo = 'text',
+        marker = list(colors = colors,
+                      line = list(color = '#FFFFFF', width = 1)),
+                      
+        showlegend = FALSE)%>%
+  layout(title = '离职类型与离职人数',
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+```
+
+###  {data-width=400}
+
+```{r}
+q7<-All%>%
+  filter(`Type of movement`=="Exit")%>% 
+  group_by(`Reason for Leaving`,`Attrition Type`)%>%
+  summarise(count=length(`Reason for Leaving`))%>%
+  ggplot(aes(x=`Reason for Leaving`,y=count))+
+  geom_bar(stat = "identity",fill="#1380A1",width = 0.6)+
+  facet_wrap(~`Attrition Type`,scales = 'free')+
+  bbc_style()+
+  theme(axis.text = ggplot2::element_text(size = 12),
+        axis.text.x = element_text(angle = 30,hjust = 0.8, vjust = 0.8))
+ggplotly(q7)
+```
+
+## Row {data-height=100}
+
+### 小结 
+
+- 85%的员工自愿离职，15%的员工被公司开除。
+- 自愿离职的员工的离职原因是优厚的补偿金、更好的工作机会、个人原因。
+- 被开除员工的开除原因是项目结束、纪律处分、个人表现。
+
+
+
+
+
+新问题新趋势 {data-orientation=rows}
+=============================
+
+Row{data-height=200}
+------------------------------
+### 离职人员平均在职时长{data-width=200}
+```{r}
+All_Exit<- All %>% filter(`Type of movement`== 'Exit')
+All_Entry <-All %>% filter(`Type of movement`== 'Entry')
+All_Exit <-  mutate(All_Exit,month=lubridate::month(`Date of Exit`)) 
+All_Entry <- mutate(All_Entry,month=lubridate::month(`Date of Hire`))
+All<- rbind(All_Entry,All_Exit)
+
+period <- All_Exit$`Date of Exit`-All_Exit$`Date of Hire`
+period <-as.integer(mean(period))
+valueBox(value = period,icon = "fa-clock-o",caption = "离职人员平均在职天数",color = "green")
+```
+
+### 新问题与新趋势
+- 整体来说，入职人数大于离职人数，人员净流入为正，反映出公司处于扩张阶段。其中Delivery部门是发展最快的。
+- 各个地区及全球离职人员平均在职时长都大约是1340天，公司可就此展开对员工职业生涯的分析和管理，以将人员流动性控制在更有利于公司发展的大小。
+- 离职潮集中在年初，考虑到大多数离职者都是自愿离职，所以在年初及之前做好人力资源管理或许可以有效预防和减少离职。
+- 部门业务和组织划分得越细，人员流动性就越大，可以从此角度入手调整业务划分和组织架构。
+- 相比于入职，离职人群中几乎没有Work Permit签证和Contractor型雇佣，这可能反映出这两类人更不容易离职。
+
+Row{data-height=300}
+----------------------------
+### 业务多样性{data-width=600}
+```{r}
+
+div<-All[,c(11,12)]
+d1 <- as.data.frame(table(div$Org)) 
+job_entropy = c()
+for (j in 1:length(d1$Var1)){
+  d2<- div %>% filter(Org == d1[j,1] )
+  t1 <- table(d2$`Job Title`)
+t1 <- as.data.frame(t1)
+res <- 0
+for (i in 1:length(t1$Freq)){
+  p <- t1[i,2]/length(t1$Freq)
+  res <- res + p*log(p)
+  
+}
+    job_entropy=c(job_entropy,-res) 
+}
+
+
+Org_Entry <-All%>%
+  filter(`Type of movement`=="Entry")%>%
+  group_by(Org)%>%
+  summarise(total_entry=sum(length(Org)))
+Org_Exit <-All%>%
+  filter(`Type of movement`=="Exit")%>%
+  group_by(Org)%>%
+  summarise(total_exit=sum(length(Org)))
+Org_Exit <-Org_Exit[,c(2)]
+
+div2 <- All[,c(8,12)]
+d21 <- as.data.frame(table(div2$Org))
+ studio_entropy=c()
+for (j in 1:length(d21$Var1)){
+  d22<- div2 %>% filter(Org == d21[j,1])
+  t1 <- table(d22$Studio)
+t1 <- as.data.frame(t1)
+res <- 0
+for (i in 1:length(t1$Freq)){
+  p <- t1[i,2]/length(t1$Freq)
+  res <- res + p*log(p)
+}
+    studio_entropy=c(studio_entropy,-res)
+}
+ 
+Org <- cbind(Org_Entry,Org_Exit,job_entropy,studio_entropy)
+
+p1 <- ggplot(data=Org, mapping=aes(x=Org,y=job_entropy))+
+  geom_bar(stat="identity",fill="orange")+bbc_style()+
+  labs(title="部门业务细分多样性",y="业务种类熵值")+
+  theme_classic(base_family = "STSong")
+ggplotly()
+
+```
+
+### 工作室/地域分散度{data-width=600}
+```{r}
+p2 <- ggplot(data=Org, mapping=aes(x=Org,y=studio_entropy))+
+  geom_bar(stat="identity",fill="orange")+bbc_style()+
+  labs(title="部门工作室地域分散度",y="工作室种类熵值")+
+  theme_classic(base_family = "STSong")
+  ggplotly()
+
+```
+
+### 相关性分析
+```{r}
+cm<-cor(Org[,c(2,3,4,5)],method = c("pearson", "kendall", "spearman"))
+knitr::kable(cm)
+```
+- 相关性分析结论：
+   
+  由相关系数矩阵可以看出，入职人数、离职人数、部门业务细分多样性和部门工作室地域多样性都在一定程度上正相关
+
+Row {data-height=320}
+---------------------
+### 2019年全球入离职时间序列图 {data-width=900}
+```{r}
+All %>%
+  group_by(month,`Type of movement`)%>%
+  summarise(`number of people`=length(month))  %>%
+  ggplot(.,aes(x=month,y=`number of people`,xaxt="n",color=`Type of movement`))+scale_x_continuous(limits=c(1,12),breaks=round(seq(1,12,length.out=12),0))+geom_line()+geom_point(size=4, shape=20)+bbc_style()+labs(title="全球入离职时间序列图")+theme_classic(base_family = "STSong")
+  ggplotly()
+  
+```
+
+### 离职人群画像 {data-width=700}
+```{r}
+library(utils)
+library(wordcloud)
+dat_csv <- All
+dat_csv <- dat_csv[,c(17,19,20,21,22)]
+dat_csv1 <- dat_csv %>% filter(`Type of movement` =='Exit')
+dat_csv1 <- data.frame(dat_csv1[,-c(1)])
+k<- length(dat_csv1$Reason.for.Leaving)*4
+dat_csv1 <- as.matrix(dat_csv1)
+dim(dat_csv1) <- c(k*1,1)
+fre <- table(dat_csv1)
+fre <- sort(fre,decreasing = TRUE)
+fre <- data.frame(fre)
+wordcloud(fre$dat_csv1,fre$Freq,random.color=FALSE,colors=c('red','blue','green','yellow','purple',"orange","black"),scale=c(3.1,0.2))
+```
+
+### 入离职总结
+- 离职人群的工作签证大都是Citizen型。
+- 离职人群大都是Full time employee。
+- 离职人群大部份都是为了更好的工作机会和薪水而自愿离开，也有部分是因为个人原因自愿离职。只有很小一部分是非自愿离职。
+- 总体来说入职人数多于离职人数。
+- 离职潮集中在年初。
